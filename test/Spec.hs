@@ -7,6 +7,7 @@ import Data.List (nub, sort)
 
 import Test.Tasty
 import Test.QuickCheck
+import Test.Tasty.HUnit (testCase, assertEqual)
 import Test.Tasty.QuickCheck as QC
 import Test.Invariant ((<=>))
 
@@ -70,6 +71,13 @@ prop_newform (Values v) = (evalexpr =<< exprify v) == eval v
 prop_rpnform :: Expression -> Bool
 prop_rpnform = evalexpr <=> eval.rpnify
 
+testManualSolutions :: [TestTree]
+testManualSolutions =
+    map (\(digs, want, answers) -> testCase (show digs) $ assertEqual "" answers (map show (solve digs want))) [
+    ([1, 3, 4, 6], 24, ["4*((1/3)+6)", "(1^3)*4*6"]),
+    ([5, 5, 5, 1], 24, ["(5*5)-(1^5)"])]
+
+
 tests :: [TestTree]
 tests = [
   testProperty "canonicalizes" prop_canon,
@@ -77,7 +85,10 @@ tests = [
   testProperty "dedups [[Value]]" prop_dedup2,
   testProperty "new form works" prop_newform,
   testProperty "expr canon" prop_exprcanon,
-  testProperty "rpn expr" prop_rpnform
+  testProperty "rpn expr" prop_rpnform,
+
+  -- A couple manual test cases we know
+  testGroup "manual solutions" testManualSolutions
   ]
 
 main :: IO ()
