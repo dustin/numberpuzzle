@@ -7,4 +7,4 @@ import System.Environment (getArgs)
 main :: IO ()
 main = do
   (want:vals) <- map read <$> getArgs
-  forM_ (solve vals want) print
+  forM_ (solve want vals) print

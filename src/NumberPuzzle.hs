@@ -153,8 +153,8 @@ dedup = dedup' Set.empty
       | x `Set.member` seen = dedup' seen xs
       | otherwise = x : dedup' (Set.insert x seen) xs
 
-solve :: [Int] -> Int -> [Expression]
-solve digits want = dedup $ map (canonicalizeexpr.fromJust.exprify) $ do
+solve :: Int -> [Int] -> [Expression]
+solve want digits = dedup $ map (canonicalizeexpr.fromJust.exprify) $ do
   digs <- (dedup . permutations) $ map Val digits
   ops <- replicateM (length digits - 1) operators
   inputs <- (dedup . map canonicalize . permutations) (digs <> ops)
