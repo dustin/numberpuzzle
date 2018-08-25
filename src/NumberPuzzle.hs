@@ -68,7 +68,7 @@ instance Eq Expression where (==) = on (==) show
 -- Expressions are sorted by length followed by value.
 instance Ord Expression where
   compare (EVal a) (EVal b) = compare a b
-  compare a b = (comparing depth <> comparing evalexpr) a b
+  compare a b = (comparing depth <> comparing evalexpr <> comparing show) a b
 
 exprify :: [Value] -> Maybe Expression
 exprify = go []

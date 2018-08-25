@@ -59,6 +59,9 @@ prop_dedup2 :: [Values] -> Bool
 prop_dedup2 vals = let v = map (\(Values v) -> v) vals in
                      nub v == dedup v
 
+prop_dedup_expr :: [Expression] -> Bool
+prop_dedup_expr = nub <=> dedup
+
 prop_canon :: Values -> Property
 prop_canon (Values v) = (isJust . eval) v ==> eval v == (eval . canonicalize) v
 
@@ -74,7 +77,21 @@ prop_rpnform = evalexpr <=> eval.rpnify
 testManualSolutions :: [TestTree]
 testManualSolutions =
     map (\(digs, want, answers) -> testCase (show digs) $ assertEqual "" answers (map show (solve want digs))) [
-    ([1, 3, 4, 6], 24, ["4*((1/3)+6)", "(1^3)*4*6"]),
+    ([1, 3, 4, 6], 24, ["4*((1/3)+6)",
+                        "((1/3)+4)*6",
+                        "(1/3)+(4*6)",
+                        "((1^4)+3)*6",
+                        "(4-(1/3))*6",
+                        "4*(6-(1/3))",
+                        "(4*6)-(1/3)",
+                        "(1^3)*(4*6)",
+                        "(1^3)*4*6",
+                        "(4*6)/(1^3)",
+                        "(4/(1^3))*6",
+                        "4*(6/(1^3))",
+                        "(4*6)^(1^3)",
+                        "(4^(1^3))*6",
+                        "4*(6^(1^3))"]),
     ([5, 5, 5, 1], 24, ["(5*5)-(1^5)"])]
 
 
@@ -83,6 +100,7 @@ tests = [
   testProperty "canonicalizes" prop_canon,
   testProperty "dedups [Value]" prop_dedup,
   testProperty "dedups [[Value]]" prop_dedup2,
+  testProperty "dedups Expression" prop_dedup_expr,
   testProperty "new form works" prop_newform,
   testProperty "expr canon" prop_exprcanon,
   testProperty "rpn expr" prop_rpnform,
