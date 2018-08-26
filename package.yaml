@@ -27,7 +27,7 @@ library:
   dependencies:
   - containers
   - text
-  - attoparsec
+  - megaparsec
 
 executables:
   numberpuzzle:
@@ -57,7 +57,7 @@ tests:
     - tasty-hunit
     - tasty-quickcheck
     - test-invariant
-    - attoparsec
+    - megaparsec
     - text
   slow-test:
     main:                Slow.hs

@@ -12,12 +12,17 @@ import Control.Applicative (liftA2, (<|>))
 import Control.Monad (guard, replicateM);
 import Data.Foldable (minimumBy, maximumBy)
 import Data.Function (on)
+import Data.Void (Void)
 import Data.Functor (($>))
 import Data.List (sort, sortBy, permutations, intercalate);
 import Data.Maybe (fromJust)
 import Data.Ord (comparing)
 import Data.Semigroup ((<>))
-import qualified Data.Attoparsec.Text as A
+import Data.Text (Text)
+import Text.Megaparsec (Parsec, sepBy1)
+import Text.Megaparsec.Char (char)
+import qualified Text.Megaparsec.Char.Lexer as L
+
 
 data Value = Fun (String, Int -> Int -> Maybe Int)
            | Val Int
@@ -158,11 +163,13 @@ dedup = dedup' Set.empty
       | otherwise = x : dedup' (Set.insert x seen) xs
 
 
-parseRPN :: A.Parser [Value]
-parseRPN = A.sepBy value (A.satisfy (`elem` [' ', ',']))
+type Parser = Parsec Void Text
 
-  where value :: A.Parser Value
-        value = Val <$> A.decimal <|> op
+parseRPN :: Parser [Value]
+parseRPN =  sepBy1 value (char ' ')
+
+  where value :: Parser Value
+        value = Val <$> L.decimal <|> op
 
         op = "+"  $> Fun ("+", pw (+))
           <|> "-" $> Fun ("-", pw (-))

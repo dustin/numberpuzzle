@@ -6,7 +6,7 @@ import Control.Monad (forM_)
 import Data.Semigroup ((<>))
 import Data.Maybe (isJust)
 import Data.List (nub, sort)
-import qualified Data.Attoparsec.Text as A
+import Text.Megaparsec (parse)
 
 import Test.Tasty
 import Test.QuickCheck
@@ -115,7 +115,7 @@ testManualCanon =
 
 testRPNParser :: [TestTree]
 testRPNParser =
-  map (\(t, want) -> testCase (unpack t) $ assertEqual "" want (eval <$> A.parseOnly parseRPN t)) [
+  map (\(t, want) -> testCase (unpack t) $ assertEqual "" want (eval <$> parse parseRPN "" t)) [
   ("2 3 +", Right (Just 5)),
   ("1 2 3 + *", Right (Just 5)),
   ("1 2 ^ 3 *", Right (Just 3))
