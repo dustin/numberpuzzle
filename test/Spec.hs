@@ -5,7 +5,7 @@ import NumberPuzzle
 import Control.Monad (forM_)
 import Data.Semigroup ((<>))
 import Data.Maybe (isJust)
-import Data.List (nub, sort)
+import Data.List (nub, sort, intercalate)
 import Text.Megaparsec (parse)
 
 import Test.Tasty
@@ -19,7 +19,7 @@ import Data.Text (pack, unpack)
 newtype Values = Values [Value]
 
 instance Show Values where
-  show (Values v) = show v
+  show (Values v) = (intercalate " " . map show) v
 
 instance Arbitrary Values where
   arbitrary = do
@@ -131,6 +131,9 @@ testExprParser =
 prop_showParseEvalExpr :: Expression -> Bool
 prop_showParseEvalExpr x = Right (evalexpr x) == (evalexpr <$> parse parseExpr "" (pack $ show x))
 
+prop_showParseEvalRPN :: Values -> Bool
+prop_showParseEvalRPN v@(Values x) = Right (eval x) == (eval <$> parse parseRPN "" (pack $ show v))
+
 tests :: [TestTree]
 tests = [
   testProperty "canonicalizes" prop_canon,
@@ -142,6 +145,7 @@ tests = [
   testProperty "rpn expr" prop_rpnform,
 
   testProperty "expr show parse eval" prop_showParseEvalExpr,
+  testProperty "rpn show parse eval" prop_showParseEvalRPN,
 
   testGroup "rpn parsing" testRPNParser,
   testGroup "expr parsing" testExprParser,
