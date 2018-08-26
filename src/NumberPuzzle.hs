@@ -21,7 +21,7 @@ import Data.Semigroup ((<>))
 import Data.Text (Text, pack)
 import Text.Megaparsec (Parsec, sepBy1, between)
 import Text.Megaparsec.Char (char, string, space)
-import Text.Megaparsec.Expr
+import Text.Megaparsec.Expr (makeExprParser, Operator(..))
 import qualified Text.Megaparsec.Char.Lexer as L
 
 
