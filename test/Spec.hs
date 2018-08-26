@@ -5,6 +5,7 @@ import NumberPuzzle
 import Control.Monad (forM_)
 import Data.Semigroup ((<>))
 import Data.Maybe (isJust)
+import Data.Either (fromRight)
 import Data.List (nub, sort, intercalate)
 import Text.Megaparsec (parse)
 
@@ -13,7 +14,7 @@ import Test.QuickCheck
 import Test.Tasty.HUnit (testCase, assertEqual)
 import Test.Tasty.QuickCheck as QC
 import Test.Invariant ((<=>))
-import Data.Text (pack, unpack)
+import Data.Text (Text, pack, unpack)
 
 
 newtype Values = Values [Value]
@@ -85,33 +86,16 @@ testManualSolutions =
 
 testManualCanon :: [TestTree]
 testManualCanon =
-  map (\(expr, want) -> testCase (show expr) $ assertEqual "" want (show $ canonicalizeexpr expr)) [
-  ((EFun ("*", pw (*)) [EFun ("^", pw (^)) [EVal 1, EVal 3],
-                        EFun ("*", pw (*)) [EVal 4, EVal 6]]),
-    "(1^3)*4*6"),
-  ((EFun ("*", pw (*)) [
-       EFun ("*", pw (*)) [EVal 4, EVal 6],
-       EFun ("^", pw (^)) [EVal 1, EVal 3]
-       ]),
-    "(1^3)*4*6"),
-  ((EFun ("*", pw (*)) [
-       EFun ("*", pw (*)) [
-           EFun ("^", pw (^)) [EVal 1, EVal 3],
-           EFun ("*", pw (*)) [EVal 4, EVal 6]
-           ]]),
-    "(1^3)*4*6"),
-  ((EFun ("*", pw (*)) [
-       EFun ("*", pw (*)) [EVal 4, EVal 6],
-       EFun ("*", pw (*)) [EVal 1, EVal 3]
-       ]),
-    "1*3*4*6"),
-  ((EFun ("*", pw (*)) [
-       EFun ("*", pw (*)) [EFun ("*", pw (*)) [EVal 4, EVal 6]],
-       EFun ("*", pw (*)) [EFun ("*", pw (*)) [EVal 1, EVal 3]]
-       ]),
-    "1*3*4*6")
-    ]
-  where pw f a b = pure $ f a b
+  map (\(expr, want) -> testCase (show expr) $ assertEqual "" want (show $ (canonicalizeexpr.p) expr)) [
+  ("(1^3)*(4*6)", "(1^3)*4*6"),
+  ("(4*6)*(1^3)", "(1^3)*4*6"),
+  ("((1^3)*(4*6))", "(1^3)*4*6"),
+  ("(4*6)*(1*3)", "1*3*4*6"),
+  ("((4*6))*((1*3))", "1*3*4*6")
+  ]
+  where
+    p :: Text -> Expression
+    p = fromRight undefined . parse parseExpr ""
 
 testRPNParser :: [TestTree]
 testRPNParser =
