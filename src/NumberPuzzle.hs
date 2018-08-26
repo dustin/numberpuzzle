@@ -98,26 +98,24 @@ canonicalizeexpr e@(EFun _ _) = (commute . associate) e
     commute :: Expression -> Expression
     commute e@(EFun f@(fn,_) exps)
       | commutes fn = EFun f (map canonicalizeexpr $ sortBy (comparing evalexpr) exps)
-      | otherwise = e
+      | otherwise = EFun f $ map canonicalizeexpr exps
 
-    commutes "*" = True
-    commutes "+" = True
-    commutes _ = False
+      where
+        commutes "*" = True
+        commutes "+" = True
+        commutes _ = False
 
     associate :: Expression -> Expression
-    -- (1+2)+3 -> 1+2+3
-    associate e@(EFun f@(fn,_) (EFun (fn',_) inner:rest))
-      | associates fn fn' = EFun f (inner <> rest)
-      | otherwise = e
-      -- 1+(2+3) -> 1+2+3
-    associate e@(EFun f@(fn,_) (l:EFun (fn',_) inner:rest))
-      | associates fn fn' = EFun f (l:inner <> rest)
-      | otherwise = e
+    associate e@(EFun f@(fn,_) exprs) =
+      EFun f $ foldr ass [] $ map canonicalizeexpr exprs
+      where ass e'@(EFun (fn',_) exprs) o
+              | associates fn fn' = exprs <> o
+              | otherwise = e':o
+            ass x o = x:o
+            associates "*" "*" = True
+            associates "+" "+" = True
+            associates _ _ = False
     associate x = x
-
-    associates "*" "*" = True
-    associates "+" "+" = True
-    associates _ _ = False
 canonicalizeexpr x = x
 
 canonicalize :: [Value] -> [Value]

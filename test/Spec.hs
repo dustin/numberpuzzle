@@ -79,6 +79,36 @@ testManualSolutions =
     ([5, 5, 5, 1], 24, ["(5*5)-(1^5)"])]
 
 
+testManualCanon :: [TestTree]
+testManualCanon =
+  map (\(expr, want) -> testCase (show expr) $ assertEqual "" want (show $ canonicalizeexpr expr)) [
+  ((EFun ("*", pw (*)) [EFun ("^", pw (^)) [EVal 1, EVal 3],
+                        EFun ("*", pw (*)) [EVal 4, EVal 6]]),
+    "(1^3)*4*6"),
+  ((EFun ("*", pw (*)) [
+       EFun ("*", pw (*)) [EVal 4, EVal 6],
+       EFun ("^", pw (^)) [EVal 1, EVal 3]
+       ]),
+    "(1^3)*4*6"),
+  ((EFun ("*", pw (*)) [
+       EFun ("*", pw (*)) [
+           EFun ("^", pw (^)) [EVal 1, EVal 3],
+           EFun ("*", pw (*)) [EVal 4, EVal 6]
+           ]]),
+    "(1^3)*4*6"),
+  ((EFun ("*", pw (*)) [
+       EFun ("*", pw (*)) [EVal 4, EVal 6],
+       EFun ("*", pw (*)) [EVal 1, EVal 3]
+       ]),
+    "1*3*4*6"),
+  ((EFun ("*", pw (*)) [
+       EFun ("*", pw (*)) [EFun ("*", pw (*)) [EVal 4, EVal 6]],
+       EFun ("*", pw (*)) [EFun ("*", pw (*)) [EVal 1, EVal 3]]
+       ]),
+    "1*3*4*6")
+    ]
+  where pw f a b = pure $ f a b
+
 tests :: [TestTree]
 tests = [
   testProperty "canonicalizes" prop_canon,
@@ -90,7 +120,8 @@ tests = [
   testProperty "rpn expr" prop_rpnform,
 
   -- A couple manual test cases we know
-  testGroup "manual solutions" testManualSolutions
+  testGroup "manual solutions" testManualSolutions,
+  testGroup "manual canonicalization" testManualCanon
   ]
 
 main :: IO ()
