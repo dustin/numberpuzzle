@@ -13,7 +13,7 @@ import Test.QuickCheck
 import Test.Tasty.HUnit (testCase, assertEqual)
 import Test.Tasty.QuickCheck as QC
 import Test.Invariant ((<=>))
-import Data.Text (unpack)
+import Data.Text (pack, unpack)
 
 
 newtype Values = Values [Value]
@@ -121,6 +121,16 @@ testRPNParser =
   ("1 2 ^ 3 *", Right (Just 3))
   ]
 
+testExprParser :: [TestTree]
+testExprParser =
+  map (\(t, want) -> testCase (unpack t) $ assertEqual "" want (show <$> parse parseExpr "" t)) [
+  ("1+2+3", Right "(1+2)+3"),
+  ("1+2*3-4/5^2", Right "(1+(2*3))-(4/(5^2))")
+  ]
+
+prop_showParseEvalExpr :: Expression -> Bool
+prop_showParseEvalExpr x = Right (evalexpr x) == (evalexpr <$> parse parseExpr "" (pack $ show x))
+
 tests :: [TestTree]
 tests = [
   testProperty "canonicalizes" prop_canon,
@@ -131,10 +141,13 @@ tests = [
   testProperty "expr canon" prop_exprcanon,
   testProperty "rpn expr" prop_rpnform,
 
-  -- A couple manual test cases we know
-  testGroup "manual solutions" testManualSolutions,
+  testProperty "expr show parse eval" prop_showParseEvalExpr,
+
+  testGroup "rpn parsing" testRPNParser,
+  testGroup "expr parsing" testExprParser,
   testGroup "manual canonicalization" testManualCanon,
-  testGroup "rpn parsing" testRPNParser
+  testGroup "manual solutions" testManualSolutions
+
   ]
 
 main :: IO ()

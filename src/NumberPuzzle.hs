@@ -4,7 +4,7 @@ module NumberPuzzle
     ( Value(..),
       Expression(..),
       eval, solve, parseRPN,
-      operators, canonicalize, dedup, exprify, evalexpr, canonicalizeexpr, depth, rpnify
+      operators, canonicalize, dedup, exprify, evalexpr, canonicalizeexpr, depth, rpnify, parseExpr
     ) where
 
 import qualified Data.Set as Set
@@ -13,14 +13,15 @@ import Control.Monad (guard, replicateM);
 import Data.Foldable (minimumBy, maximumBy)
 import Data.Function (on)
 import Data.Void (Void)
-import Data.Functor (($>))
+import Data.Functor (($>), (<$))
 import Data.List (sort, sortBy, permutations, intercalate);
 import Data.Maybe (fromJust)
 import Data.Ord (comparing)
 import Data.Semigroup ((<>))
-import Data.Text (Text)
-import Text.Megaparsec (Parsec, sepBy1)
-import Text.Megaparsec.Char (char)
+import Data.Text (Text, pack)
+import Text.Megaparsec (Parsec, sepBy1, between)
+import Text.Megaparsec.Char (char, string, space)
+import Text.Megaparsec.Expr
 import qualified Text.Megaparsec.Char.Lexer as L
 
 
@@ -176,6 +177,32 @@ parseRPN =  sepBy1 value (char ' ')
           <|> "*" $> Fun ("*", pw (*))
           <|> "/" $> Fun ("/", safeDiv)
           <|> "^" $> Fun ("^", safeExp)
+
+parseExpr :: Parser Expression
+parseExpr = makeExprParser term operators
+
+  where term :: Parser Expression
+        term = parens parseExpr <|> EVal <$> lexeme L.decimal
+
+        operators :: [[Operator Parser Expression]]
+        operators = [
+          [op "^" safeExp],
+          [op "*" (pw (*)), op "/" safeDiv],
+          [op "+" (pw (+)), op "-" (pw (-))]
+          ]
+
+        symbol = L.symbol space
+        lexeme = L.lexeme space
+
+        op :: String -> (Int -> Int -> Maybe Int) -> Operator Parser Expression
+        op s f = InfixL (binify (EFun (s, f)) <$ symbol (pack s))
+
+        binify :: ([Expression] -> Expression) -> Expression -> Expression -> Expression
+        binify e a b =  e [a, b]
+
+        parens :: Parser Expression -> Parser Expression
+        parens = between (symbol "(") (symbol ")")
+
 
 solve :: Int -> [Int] -> [Expression]
 solve want digits = dedup $ map (canonicalizeexpr.fromJust.exprify) $ do
