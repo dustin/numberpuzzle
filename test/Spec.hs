@@ -35,14 +35,13 @@ instance Arbitrary Expression where
 
     where
       subex :: Gen Expression
-      subex = do
-        frequency [
-          (3, EVal <$> choose (0,9)),
-          (1, arbitrary)
-          ]
+      subex = frequency [
+        (3, EVal <$> choose (0,9)),
+        (1, arbitrary)
+        ]
 
-show_samples :: IO ()
-show_samples = do
+showSamples :: IO ()
+showSamples = do
   samples <- sample' (arbitrary :: Gen Expression)
   forM_ (sort samples) (\s -> do
                            (putStr.show) s

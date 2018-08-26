@@ -106,11 +106,11 @@ canonicalizeexpr e@(EFun _ _) = (commute . associate) e
 
     associate :: Expression -> Expression
     -- (1+2)+3 -> 1+2+3
-    associate e@(EFun f@(fn,_) ((EFun (fn',_) inner):rest))
+    associate e@(EFun f@(fn,_) (EFun (fn',_) inner:rest))
       | associates fn fn' = EFun f (inner <> rest)
       | otherwise = e
       -- 1+(2+3) -> 1+2+3
-    associate e@(EFun f@(fn,_) (l:(EFun (fn',_) inner):rest))
+    associate e@(EFun f@(fn,_) (l:EFun (fn',_) inner:rest))
       | associates fn fn' = EFun f (l:inner <> rest)
       | otherwise = e
     associate x = x
