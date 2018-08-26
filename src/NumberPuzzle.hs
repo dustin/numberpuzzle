@@ -1,19 +1,23 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module NumberPuzzle
     ( Value(..),
       Expression(..),
-      eval, solve,
+      eval, solve, parseRPN,
       operators, canonicalize, dedup, exprify, evalexpr, canonicalizeexpr, depth, rpnify
     ) where
 
 import qualified Data.Set as Set
-import Control.Applicative (liftA2)
+import Control.Applicative (liftA2, (<|>))
 import Control.Monad (guard, replicateM);
 import Data.Foldable (minimumBy, maximumBy)
 import Data.Function (on)
+import Data.Functor (($>))
 import Data.List (sort, sortBy, permutations, intercalate);
 import Data.Maybe (fromJust)
 import Data.Ord (comparing)
 import Data.Semigroup ((<>))
+import qualified Data.Attoparsec.Text as A
 
 data Value = Fun (String, Int -> Int -> Maybe Int)
            | Val Int
@@ -43,12 +47,14 @@ safeExp a b
   | otherwise = pure $ a ^ b
 
 operators :: [Value]
-operators = map (\(s,f) -> Fun (s, justice f)) [("+", (+)),
-                                                ("-", (-)),
-                                                ("*", (*))] <> [Fun ("/", safeDiv),
-                                                                Fun ("^", safeExp)]
-  where justice :: (Int -> Int -> Int) -> Int -> Int -> Maybe Int
-        justice f a b = pure $ f a b
+operators = map (\(s,f) -> Fun (s, pw f)) [("+", (+)),
+                                           ("-", (-)),
+                                           ("*", (*))] <> [Fun ("/", safeDiv),
+                                                           Fun ("^", safeExp)]
+
+-- sort of a double lift
+pw :: (Int -> Int -> Int) -> Int -> Int -> Maybe Int
+pw f a b = pure $ f a b
 
 data Expression = EVal Int
                 | EFun (String, Int -> Int -> Maybe Int) [Expression]
@@ -107,7 +113,7 @@ canonicalizeexpr e@(EFun _ _) = (commute . associate) e
 
     associate :: Expression -> Expression
     associate e@(EFun f@(fn,_) exprs) =
-      EFun f $ foldr ass [] $ map canonicalizeexpr exprs
+      EFun f $ foldr (ass.canonicalizeexpr) [] exprs
       where ass e'@(EFun (fn',_) exprs) o
               | associates fn fn' = exprs <> o
               | otherwise = e':o
@@ -150,6 +156,19 @@ dedup = dedup' Set.empty
     dedup' seen (x : xs)
       | x `Set.member` seen = dedup' seen xs
       | otherwise = x : dedup' (Set.insert x seen) xs
+
+
+parseRPN :: A.Parser [Value]
+parseRPN = A.sepBy value (A.satisfy (`elem` [' ', ',']))
+
+  where value :: A.Parser Value
+        value = Val <$> A.decimal <|> op
+
+        op = "+"  $> Fun ("+", pw (+))
+          <|> "-" $> Fun ("-", pw (-))
+          <|> "*" $> Fun ("*", pw (*))
+          <|> "/" $> Fun ("/", safeDiv)
+          <|> "^" $> Fun ("^", safeExp)
 
 solve :: Int -> [Int] -> [Expression]
 solve want digits = dedup $ map (canonicalizeexpr.fromJust.exprify) $ do

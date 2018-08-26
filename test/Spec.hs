@@ -1,15 +1,19 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 import NumberPuzzle
 
 import Control.Monad (forM_)
 import Data.Semigroup ((<>))
 import Data.Maybe (isJust)
 import Data.List (nub, sort)
+import qualified Data.Attoparsec.Text as A
 
 import Test.Tasty
 import Test.QuickCheck
 import Test.Tasty.HUnit (testCase, assertEqual)
 import Test.Tasty.QuickCheck as QC
 import Test.Invariant ((<=>))
+import Data.Text (unpack)
 
 
 newtype Values = Values [Value]
@@ -109,6 +113,14 @@ testManualCanon =
     ]
   where pw f a b = pure $ f a b
 
+testRPNParser :: [TestTree]
+testRPNParser =
+  map (\(t, want) -> testCase (unpack t) $ assertEqual "" want (eval <$> A.parseOnly parseRPN t)) [
+  ("2 3 +", Right (Just 5)),
+  ("1 2 3 + *", Right (Just 5)),
+  ("1 2 ^ 3 *", Right (Just 3))
+  ]
+
 tests :: [TestTree]
 tests = [
   testProperty "canonicalizes" prop_canon,
@@ -121,7 +133,8 @@ tests = [
 
   -- A couple manual test cases we know
   testGroup "manual solutions" testManualSolutions,
-  testGroup "manual canonicalization" testManualCanon
+  testGroup "manual canonicalization" testManualCanon,
+  testGroup "rpn parsing" testRPNParser
   ]
 
 main :: IO ()

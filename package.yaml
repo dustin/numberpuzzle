@@ -26,6 +26,8 @@ library:
   source-dirs: src
   dependencies:
   - containers
+  - text
+  - attoparsec
 
 executables:
   numberpuzzle:
@@ -55,6 +57,8 @@ tests:
     - tasty-hunit
     - tasty-quickcheck
     - test-invariant
+    - attoparsec
+    - text
   slow-test:
     main:                Slow.hs
     source-dirs:         test
