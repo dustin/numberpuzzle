@@ -25,7 +25,7 @@ instance Show Values where
 instance Arbitrary Values where
   arbitrary = do
     n <- choose(2, 8)
-    (d1:d2:digs) <- vectorOf n (Val <$> choose (0,9))
+    (d1:d2:digs) <- vectorOf n ((Val . toRational) <$> (choose (0,9) :: Gen Int))
     ops <- vectorOf (pred n) (oneof $ map pure operators)
     rest <- shuffle (digs <> ops)
     pure $ Values (d1:d2:rest)
@@ -41,7 +41,7 @@ instance Arbitrary Expression where
     where
       subex :: Gen Expression
       subex = frequency [
-        (3, EVal <$> choose (0,9)),
+        (3, (EVal . toRational) <$> (choose (0,9) :: Gen Int)),
         (1, arbitrary)
         ]
 
@@ -77,24 +77,17 @@ prop_rpnform = evalexpr <=> eval.rpnify
 
 testManualSolutions :: [TestTree]
 testManualSolutions =
-    map (\(digs, want, answers) -> testCase (show digs) $ assertEqual "" answers (map show (solve want digs))) [
-    ([5, 5, 5, 1], 24, ["(5*5)-(1^5)"]),
-    ([1, 3, 4, 6], 24, ["((1^4)+3)*6",
-                        "(1^3)*4*6",
-                        "(4*6)/(1^3)",
-                        "(4/(1^3))*6",
-                        "4*(6/(1^3))",
-                        "(4*6)^(1^3)",
-                        "(4^(1^3))*6",
-                        "4*(6^(1^3))"])]
+    map (\(digs, want, answers) -> testCase ((show.map (floor.fromRational)) digs) $ assertEqual "" answers (map show (solve want digs))) [
+    ([5, 5, 5, 1], 24, ["(5-(1/5))*5"]),
+    ([1, 3, 4, 6], 24, ["6/(1-(3/4))"])]
 
 
 testManualCanon :: [TestTree]
 testManualCanon =
   map (\(expr, want) -> testCase (show expr) $ assertEqual "" want (show $ (canonicalizeexpr.p) expr)) [
-  ("(1^3)*(4*6)", "(1^3)*4*6"),
-  ("(4*6)*(1^3)", "(1^3)*4*6"),
-  ("((1^3)*(4*6))", "(1^3)*4*6"),
+  ("(1*3)*(4*6)", "1*3*4*6"),
+  ("(4*6)*(1*3)", "1*3*4*6"),
+  ("((1*3)*(4*6))", "1*3*4*6"),
   ("(4*6)*(1*3)", "1*3*4*6"),
   ("((4*6))*((1*3))", "1*3*4*6")
   ]
@@ -107,14 +100,14 @@ testRPNParser =
   map (\(t, want) -> testCase (unpack t) $ assertEqual "" want (eval <$> parse parseRPN "" t)) [
   ("2 3 +", Right (Just 5)),
   ("1 2 3 + *", Right (Just 5)),
-  ("1 2 ^ 3 *", Right (Just 3))
+  ("1 2 * 3 *", Right (Just 6))
   ]
 
 testExprParser :: [TestTree]
 testExprParser =
   map (\(t, want) -> testCase (unpack t) $ assertEqual "" want (show <$> parse parseExpr "" t)) [
   ("1+2+3", Right "(1+2)+3"),
-  ("1+2*3-4/5^2", Right "(1+(2*3))-(4/(5^2))")
+  ("1+2*3-4/5*2", Right "(1+(2*3))-((4/5)*2)")
   ]
 
 prop_showParseEvalExpr :: Expression -> Bool

@@ -13,6 +13,7 @@ import Control.Monad (guard, replicateM);
 import Data.Foldable (minimumBy, maximumBy)
 import Data.Function (on)
 import Data.Void (Void)
+import Data.Ratio (denominator)
 import Data.Functor (($>), (<$))
 import Data.List (sort, sortBy, permutations, intercalate);
 import Data.Maybe (fromJust)
@@ -25,8 +26,8 @@ import Text.Megaparsec.Expr (makeExprParser, Operator(..))
 import qualified Text.Megaparsec.Char.Lexer as L
 
 
-data Value = Fun (String, Int -> Int -> Maybe Int)
-           | Val Int
+data Value = Fun (String, Rational -> Rational -> Maybe Rational)
+           | Val Rational
 
 instance Eq Value where
   (Val v1) == (Val v2) = v1 == v2
@@ -41,39 +42,31 @@ instance Ord Value where
 
 instance Show Value where
   show (Fun (o,_)) = o
-  show (Val x) = show x
+  show (Val x) = (show.floor.fromRational) x
 
-safeDiv :: Int -> Int -> Maybe Int
+safeDiv :: Rational -> Rational -> Maybe Rational
 safeDiv a 0 = Nothing
-safeDiv a b = case a `divMod` b of
-                (x,0) -> Just x
-                _ -> Nothing
-
-safeExp :: Int -> Int -> Maybe Int
-safeExp a b
-  | b < 0 = Nothing
-  | otherwise = pure $ a ^ b
+safeDiv a b = Just $ a / b
 
 operators :: [Value]
 operators = map (\(s,f) -> Fun (s, pw f)) [("+", (+)),
                                            ("-", (-)),
-                                           ("*", (*))] <> [Fun ("/", safeDiv),
-                                                           Fun ("^", safeExp)]
+                                           ("*", (*))] <> [Fun ("/", safeDiv)]
 
 -- sort of a double lift
-pw :: (Int -> Int -> Int) -> Int -> Int -> Maybe Int
+pw :: (Rational -> Rational -> Rational) -> Rational -> Rational -> Maybe Rational
 pw f a b = pure $ f a b
 
-data Expression = EVal Int
-                | EFun (String, Int -> Int -> Maybe Int) [Expression]
+data Expression = EVal Rational
+                | EFun (String, Rational -> Rational -> Maybe Rational) [Expression]
 
 instance Show Expression where
   show (EVal x) = show x
   show (EFun (fn, _) exps) = intercalate fn (map inner exps)
-    where inner (EVal x) = show x
+    where inner (EVal x) = (show.floor.fromRational) x
           inner (EFun (fn,_) exps) = "(" <> intercalate fn (map inner exps) <> ")"
 
-depth :: Expression -> Int
+depth :: Expression -> Rational
 depth (EVal _) = 0
 depth (EFun _ exps) = 1 + foldr (\x o -> o + depth x) 0 exps
 
@@ -92,15 +85,23 @@ exprify = go []
         go (v1:v2:st) (Fun f:ops) = go (EFun f [v2,v1]:st) ops
         go _ _ = Nothing
 
-evalexpr :: Expression -> Maybe Int
-evalexpr (EVal v) = pure v
-evalexpr (EFun (_,f) exps) = foldr1 (lft f) (map evalexpr exps)
+evalexpr :: Expression -> Maybe Rational
+evalexpr = modzero . go
 
   where lft :: Monad m => (a -> a -> m a) -> (m a -> m a -> m a)
         lft f a b = do
           a' <- a
           b' <- b
           f a' b'
+
+        go (EVal v) = pure v
+        go (EFun (_,f) exps) = foldr1 (lft f) (map go exps)
+
+modzero :: Maybe Rational -> Maybe Rational
+modzero Nothing = Nothing
+modzero a@(Just x)
+  | denominator x == 1 = a
+  | otherwise = Nothing
 
 rpnify :: Expression -> [Value]
 rpnify (EVal x) = [Val x]
@@ -132,8 +133,8 @@ canonicalizeexpr e@(EFun _ _) = (commute . associate) e
     associate x = x
 canonicalizeexpr x = x
 
-eval :: [Value] -> Maybe Int
-eval = go []
+eval :: [Value] -> Maybe Rational
+eval = modzero . go []
   where go [Val x] [] = Just x
         go st (v@(Val _):ops) = go (v:st) ops
         go (Val v1:Val v2:st) (Fun (_,f):ops) =
@@ -159,23 +160,21 @@ parseRPN :: Parser [Value]
 parseRPN =  sepBy1 value (char ' ')
 
   where value :: Parser Value
-        value = Val <$> L.decimal <|> op
+        value = Val <$> (toRational <$> L.decimal) <|> op
 
         op = "+"  $> Fun ("+", pw (+))
           <|> "-" $> Fun ("-", pw (-))
           <|> "*" $> Fun ("*", pw (*))
           <|> "/" $> Fun ("/", safeDiv)
-          <|> "^" $> Fun ("^", safeExp)
 
 parseExpr :: Parser Expression
 parseExpr = makeExprParser term operators
 
   where term :: Parser Expression
-        term = parens parseExpr <|> EVal <$> lexeme L.decimal
+        term = parens parseExpr <|> EVal <$> (toRational <$> lexeme L.decimal)
 
         operators :: [[Operator Parser Expression]]
         operators = [
-          [op "^" safeExp],
           [op "*" (pw (*)), op "/" safeDiv],
           [op "+" (pw (+)), op "-" (pw (-))]
           ]
@@ -183,7 +182,7 @@ parseExpr = makeExprParser term operators
         symbol = L.symbol space
         lexeme = L.lexeme space
 
-        op :: String -> (Int -> Int -> Maybe Int) -> Operator Parser Expression
+        op :: String -> (Rational -> Rational -> Maybe Rational) -> Operator Parser Expression
         op s f = InfixL (binify (EFun (s, f)) <$ symbol (pack s))
 
         binify :: ([Expression] -> Expression) -> Expression -> Expression -> Expression
@@ -193,7 +192,7 @@ parseExpr = makeExprParser term operators
         parens = between (symbol "(") (symbol ")")
 
 
-solve :: Int -> [Int] -> [Expression]
+solve :: Rational -> [Rational] -> [Expression]
 solve want digits = dedup . map (canonicalizeexpr.fromJust.exprify) $ do
   digs <- (dedup . permutations) $ map Val digits
   ops <- replicateM (length digits - 1) operators
