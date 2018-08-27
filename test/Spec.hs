@@ -66,9 +66,6 @@ prop_dedup2 vals = let v = map (\(Values v) -> v) vals in
 prop_dedup_expr :: [Expression] -> Bool
 prop_dedup_expr = nub <=> dedup
 
-prop_canon :: Values -> Property
-prop_canon (Values v) = (isJust . eval) v ==> eval v == (eval . canonicalize) v
-
 prop_exprcanon :: Expression -> Bool
 prop_exprcanon = evalexpr <=> evalexpr.canonicalizeexpr
 
@@ -120,7 +117,6 @@ prop_showParseEvalRPN v@(Values x) = Right (eval x) == (eval <$> parse parseRPN 
 
 tests :: [TestTree]
 tests = [
-  testProperty "canonicalizes" prop_canon,
   testProperty "dedups [Value]" prop_dedup,
   testProperty "dedups [[Value]]" prop_dedup2,
   testProperty "dedups Expression" prop_dedup_expr,

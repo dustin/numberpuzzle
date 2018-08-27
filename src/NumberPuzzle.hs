@@ -4,7 +4,7 @@ module NumberPuzzle
     ( Value(..),
       Expression(..),
       eval, solve, parseRPN,
-      operators, canonicalize, dedup, exprify, evalexpr, canonicalizeexpr, depth, rpnify, parseExpr
+      operators, dedup, exprify, evalexpr, canonicalizeexpr, depth, rpnify, parseExpr
     ) where
 
 import qualified Data.Set as Set
@@ -130,19 +130,6 @@ canonicalizeexpr e@(EFun _ _) = (commute . associate) e
     associate x = x
 canonicalizeexpr x = x
 
-canonicalize :: [Value] -> [Value]
-canonicalize =  order
-  where
-    order (v1@(Val _):v2@(Val _):o@(Fun _):vals)
-      | commutes o = sort [v1, v2] <> [o] <> canonicalize vals
-    order (x:xs) = x : order xs
-    order x = x
-
-    commutes :: Value -> Bool
-    commutes (Fun ("+",_)) = True
-    commutes (Fun ("*",_)) = True
-    commutes _ = False
-
 eval :: [Value] -> Maybe Int
 eval = go []
   where go [Val x] [] = Just x
@@ -205,9 +192,9 @@ parseExpr = makeExprParser term operators
 
 
 solve :: Int -> [Int] -> [Expression]
-solve want digits = dedup $ map (canonicalizeexpr.fromJust.exprify) $ do
+solve want digits = dedup . map (canonicalizeexpr.fromJust.exprify) $ do
   digs <- (dedup . permutations) $ map Val digits
   ops <- replicateM (length digits - 1) operators
-  inputs <- (dedup . map canonicalize . permutations) (digs <> ops)
-  guard $ eval inputs == Just want
-  pure inputs
+  input <- permutations (digs <> ops)
+  guard $ eval input == Just want
+  pure input
