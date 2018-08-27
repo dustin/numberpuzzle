@@ -45,7 +45,9 @@ instance Show Value where
 
 safeDiv :: Int -> Int -> Maybe Int
 safeDiv a 0 = Nothing
-safeDiv a b = pure $ a `div` b
+safeDiv a b = case a `divMod` b of
+                (x,0) -> Just x
+                _ -> Nothing
 
 safeExp :: Int -> Int -> Maybe Int
 safeExp a b
