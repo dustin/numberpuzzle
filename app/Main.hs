@@ -6,5 +6,5 @@ import System.Environment (getArgs)
 
 main :: IO ()
 main = do
-  (want:vals) <- map read <$> getArgs
+  (want:vals) <- map (fromInteger.read) <$> getArgs
   forM_ (solve want vals) print
