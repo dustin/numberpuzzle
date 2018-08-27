@@ -98,9 +98,8 @@ evalexpr = modzero . go
         go (EFun (_,f) exps) = foldr1 (lft f) (map go exps)
 
 modzero :: Maybe Rational -> Maybe Rational
-modzero Nothing = Nothing
-modzero a@(Just x)
-  | denominator x == 1 = a
+modzero i
+  | (denominator <$> i) == Just 1 = i
   | otherwise = Nothing
 
 rpnify :: Expression -> [Value]
