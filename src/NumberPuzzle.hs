@@ -86,7 +86,7 @@ exprify = go []
         go _ _ = Nothing
 
 evalexpr :: Expression -> Maybe Rational
-evalexpr = modzero . go
+evalexpr = go
 
   where lft :: Monad m => (a -> a -> m a) -> (m a -> m a -> m a)
         lft f a b = do
@@ -96,11 +96,6 @@ evalexpr = modzero . go
 
         go (EVal v) = pure v
         go (EFun (_,f) exps) = foldr1 (lft f) (map go exps)
-
-modzero :: Maybe Rational -> Maybe Rational
-modzero i
-  | (denominator <$> i) == Just 1 = i
-  | otherwise = Nothing
 
 rpnify :: Expression -> [Value]
 rpnify (EVal x) = [Val x]
@@ -133,7 +128,7 @@ canonicalizeexpr e@(EFun _ _) = (commute . associate) e
 canonicalizeexpr x = x
 
 eval :: [Value] -> Maybe Rational
-eval = modzero . go []
+eval = go []
   where go [Val x] [] = Just x
         go st (v@(Val _):ops) = go (v:st) ops
         go (Val v1:Val v2:st) (Fun (_,f):ops) =
