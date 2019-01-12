@@ -28,6 +28,7 @@ library:
   - containers
   - text
   - megaparsec
+  - parser-combinators
 
 executables:
   numberpuzzle:

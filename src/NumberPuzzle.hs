@@ -7,23 +7,24 @@ module NumberPuzzle
       operators, dedup, exprify, evalexpr, canonicalizeexpr, depth, rpnify, parseExpr
     ) where
 
-import qualified Data.Set as Set
-import Control.Applicative (liftA2, (<|>))
-import Control.Monad (guard, replicateM);
-import Data.Foldable (minimumBy, maximumBy)
-import Data.Function (on)
-import Data.Void (Void)
-import Data.Ratio (denominator)
-import Data.Functor (($>), (<$))
-import Data.List (sort, sortBy, permutations, intercalate);
-import Data.Maybe (fromJust)
-import Data.Ord (comparing)
-import Data.Semigroup ((<>))
-import Data.Text (Text, pack)
-import Text.Megaparsec (Parsec, sepBy1, between)
-import Text.Megaparsec.Char (char, string, space)
-import Text.Megaparsec.Expr (makeExprParser, Operator(..))
-import qualified Text.Megaparsec.Char.Lexer as L
+import           Control.Applicative            (liftA2, (<|>))
+import           Control.Monad                  (guard, replicateM)
+import           Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
+import           Data.Foldable                  (maximumBy, minimumBy)
+import           Data.Function                  (on)
+import           Data.Functor                   (($>), (<$))
+import           Data.List                      (intercalate, permutations,
+                                                 sort, sortBy)
+import           Data.Maybe                     (fromJust)
+import           Data.Ord                       (comparing)
+import           Data.Ratio                     (denominator)
+import           Data.Semigroup                 ((<>))
+import qualified Data.Set                       as Set
+import           Data.Text                      (Text, pack)
+import           Data.Void                      (Void)
+import           Text.Megaparsec                (Parsec, between, sepBy1)
+import           Text.Megaparsec.Char           (char, space, string)
+import qualified Text.Megaparsec.Char.Lexer     as L
 
 
 data Value = Fun (String, Rational -> Rational -> Maybe Rational)
@@ -42,7 +43,7 @@ instance Ord Value where
 
 instance Show Value where
   show (Fun (o,_)) = o
-  show (Val x) = (show.floor.fromRational) x
+  show (Val x)     = (show.floor.fromRational) x
 
 safeDiv :: Rational -> Rational -> Maybe Rational
 safeDiv a 0 = Nothing
@@ -67,7 +68,7 @@ instance Show Expression where
           inner (EFun (fn,_) exps) = "(" <> intercalate fn (map inner exps) <> ")"
 
 depth :: Expression -> Rational
-depth (EVal _) = 0
+depth (EVal _)      = 0
 depth (EFun _ exps) = 1 + foldr (\x o -> o + depth x) 0 exps
 
 instance Eq Expression where (==) = on (==) show
@@ -80,10 +81,10 @@ instance Ord Expression where
 exprify :: [Value] -> Maybe Expression
 exprify = go []
   where go :: [Expression] -> [Value] -> Maybe Expression
-        go [x] [] = pure x
-        go st (Val v:ops) = go (EVal v:st) ops
+        go [x] []                 = pure x
+        go st (Val v:ops)         = go (EVal v:st) ops
         go (v1:v2:st) (Fun f:ops) = go (EFun f [v2,v1]:st) ops
-        go _ _ = Nothing
+        go _ _                    = Nothing
 
 evalexpr :: Expression -> Maybe Rational
 evalexpr = go
@@ -94,11 +95,11 @@ evalexpr = go
           b' <- b
           f a' b'
 
-        go (EVal v) = pure v
+        go (EVal v)          = pure v
         go (EFun (_,f) exps) = foldr1 (lft f) (map go exps)
 
 rpnify :: Expression -> [Value]
-rpnify (EVal x) = [Val x]
+rpnify (EVal x)       = [Val x]
 rpnify (EFun f exprs) = concatMap rpnify exprs <> [Fun f]
 
 canonicalizeexpr :: Expression -> Expression
@@ -112,7 +113,7 @@ canonicalizeexpr e@(EFun _ _) = (commute . associate) e
       where
         commutes "*" = True
         commutes "+" = True
-        commutes _ = False
+        commutes _   = False
 
     associate :: Expression -> Expression
     associate e@(EFun f@(fn,_) exprs) =
@@ -123,7 +124,7 @@ canonicalizeexpr e@(EFun _ _) = (commute . associate) e
             ass x o = x:o
             associates "*" "*" = True
             associates "+" "+" = True
-            associates _ _ = False
+            associates _ _     = False
     associate x = x
 canonicalizeexpr x = x
 
@@ -134,7 +135,7 @@ eval = go []
         go (Val v1:Val v2:st) (Fun (_,f):ops) =
           case f v2 v1 of
             Just x -> go (Val x:st) ops
-            _ -> Nothing
+            _      -> Nothing
         go _ _ = Nothing
 
 -- This is an optimized nub.

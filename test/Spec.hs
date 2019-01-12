@@ -1,20 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import NumberPuzzle
+import           NumberPuzzle
 
-import Control.Monad (forM_)
-import Data.Semigroup ((<>))
-import Data.Maybe (isJust)
-import Data.Either (fromRight)
-import Data.List (nub, sort, intercalate)
-import Text.Megaparsec (parse)
+import           Control.Monad         (forM_)
+import           Data.Either           (fromRight)
+import           Data.List             (intercalate, nub, sort)
+import           Data.Maybe            (isJust)
+import           Data.Semigroup        ((<>))
+import           Text.Megaparsec       (parse)
 
-import Test.Tasty
-import Test.QuickCheck
-import Test.Tasty.HUnit (testCase, assertEqual)
-import Test.Tasty.QuickCheck as QC
-import Test.Invariant ((<=>))
-import Data.Text (Text, pack, unpack)
+import           Data.Text             (Text, pack, unpack)
+import           Test.Invariant        ((<=>))
+import           Test.QuickCheck
+import           Test.Tasty
+import           Test.Tasty.HUnit      (assertEqual, testCase)
+import           Test.Tasty.QuickCheck as QC
 
 
 newtype Values = Values [Value]
@@ -25,7 +25,8 @@ instance Show Values where
 instance Arbitrary Values where
   arbitrary = do
     n <- choose(2, 8)
-    (d1:d2:digs) <- vectorOf n ((Val . toRational) <$> (choose (0,9) :: Gen Int))
+    somedigs <- vectorOf n ((Val . toRational) <$> (choose (0,9) :: Gen Int))
+    let (d1:d2:digs) = somedigs
     ops <- vectorOf (pred n) (oneof $ map pure operators)
     rest <- shuffle (digs <> ops)
     pure $ Values (d1:d2:rest)
